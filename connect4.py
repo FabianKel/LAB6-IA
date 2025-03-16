@@ -1,4 +1,6 @@
 import turtle
+from agent import Agent
+from player import Player
 
 
 class Connect4:
@@ -6,11 +8,13 @@ class Connect4:
         self.tablero = turtle.Turtle()
         self.circulo = turtle.Turtle()
         self.espaciosY = [0] * 8
-        self.rojoPos = set()
-        self.amarilloPos = set()
+        self.player1Pos = set()
+        self.player2Pos = set()
         self.coordenadasX = {i: -300 + (i - 1) * 100 for i in range(1, 8)}
         self.coordenadasY = {i: -300 + (i - 1) * 100 for i in range(1, 7)}
-        self.jugador_actual = "Red"
+        self.player1 = None
+        self.player2 = None
+        self.jugador_actual = None  # Ahora almacena un objeto Player
 
     def crear_tablero(self):
         self.tablero.ht()
@@ -57,22 +61,22 @@ class Connect4:
         x, y = self.coordenadasX[columna], self.coordenadasY[fila]
 
         # Guardar posición
-        if self.jugador_actual == "Red":
-            self.rojoPos.add((columna, fila))
+        if self.jugador_actual == self.player1:
+            self.player1Pos.add((columna, fila))
         else:
-            self.amarilloPos.add((columna, fila))
+            self.player2Pos.add((columna, fila))
 
-        # Dibujar ficha
-        self.dibujar_ficha(x, y, self.jugador_actual)
+        # Dibujar ficha con el color del jugador actual
+        self.dibujar_ficha(x, y, self.jugador_actual.color)
 
         # Verificar si hay ganador
         if self.verificar_victoria(columna, fila, self.jugador_actual):
-            print(f"¡Gana {self.jugador_actual}!")
-            turtle.textinput("Mensaje", f"¡Gana {self.jugador_actual}!\nPresiona 'OK' para salir")
+            print(f"¡Gana {self.jugador_actual.color}!")
+            turtle.textinput("Mensaje", f"¡Gana {self.jugador_actual.color}!\nPresiona 'OK' para salir")
             return True
 
         # Cambiar turno
-        self.jugador_actual = "Yellow" if self.jugador_actual == "Red" else "Red"
+        self.jugador_actual = self.player2 if self.jugador_actual == self.player1 else self.player1
         return False
 
     def dibujar_ficha(self, x, y, color):
@@ -80,17 +84,15 @@ class Connect4:
         self.circulo.width(5)
         self.circulo.speed(500)
         self.circulo.penup()
-        #POSICION
-        self.circulo.goto(x,y)
+        self.circulo.goto(x, y)
         self.circulo.pendown()
-        #DIBUJAR Y PINTAR
         self.circulo.begin_fill()
         self.circulo.circle(50)
         self.circulo.color(color)
         self.circulo.end_fill()
 
-    def verificar_victoria(self, col, fila, color):
-        posiciones = self.rojoPos if color == "Red" else self.amarilloPos
+    def verificar_victoria(self, col, fila, jugador):
+        posiciones = self.player1Pos if jugador == self.player1 else self.player2Pos
 
         def check(dx, dy):
             count = 1
@@ -106,46 +108,39 @@ class Connect4:
             check(dx, dy) for dx, dy in [(1, 0), (0, 1), (1, 1), (1, -1)]
         )
 
-    def get_estado_tablero(self):
-        """Devuelve el estado del tablero como una matriz de 6x7."""
-        tablero = [[0 for _ in range(7)] for _ in range(6)]
-        for (c, f) in self.rojoPos:
-            tablero[6 - f][c - 1] = "R"  # Rojo = 1
-        for (c, f) in self.amarilloPos:
-            tablero[6 - f][c - 1] = "A"  # Amarillo = -1
-        return tablero
+    def play(self, player1=None, player2=None):
+        """Función de juego que permite distintas configuraciones: IA vs IA, Humano vs IA, Humano vs Humano."""
+        
+        # Definir jugadores
+        self.player1 = player1
+        self.player2 = player2
+        self.jugador_actual = self.player1
 
-    def play(self):
         self.crear_tablero()
+
         while True:
             try:
-                columna = int(turtle.numinput(f"Turno {self.jugador_actual}", "Ingrese columna (1-7)", minval=1, maxval=7))
+                if self.jugador_actual.agent:
+                    # Si el jugador actual es un agente, elige movimiento automáticamente
+                    print("jugador actual es ia")
+                    print(self.get_estado_tablero())
+                    columna = self.jugador_actual.agent.elegir_movimiento(self.get_estado_tablero())
+                    print(columna)
+                else:
+                    # Si es un humano, pide entrada
+                    columna = int(turtle.numinput(f"Turno {self.jugador_actual.color}", "Ingrese columna (1-7)", minval=1, maxval=7))
+                    print("jugador actual es humano")
                 if self.colocar_ficha(columna):
                     break
             except TypeError:
                 print("Juego cancelado.")
                 break
 
-    def play_vs_ia(self, vs_ia=False, alpha_beta=False):
-        """Permite jugar contra la IA o hacer un enfrentamiento entre dos IA."""
-        self.crear_tablero()
-        while True:
-            if not vs_ia or self.jugador_actual == "Red":
-                try:
-                    columna = int(turtle.numinput(f"Turno {self.jugador_actual}", "Ingrese columna (1-7)", minval=1, maxval=7))
-                except TypeError:
-                    print("Juego cancelado.")
-                    break
-            else:
-                columna = self.movimiento_ia(alpha_beta)
-
-            if self.colocar_ficha(columna):
-                break
-
-    def movimiento_ia(self, usar_alpha_beta):
-        # Se obtiene el estado del tablero
-        estado_actual = self.get_estado_tablero()
-        
-        print(estado_actual)
-        print("IA está pensando...")
-        return 4
+    def get_estado_tablero(self):
+        """Devuelve el estado del tablero como una matriz de 6x7."""
+        tablero = [[0 for _ in range(7)] for _ in range(6)]
+        for (c, f) in self.player1Pos:
+            tablero[6 - f][c - 1] = "1"  
+        for (c, f) in self.player2Pos:
+            tablero[6 - f][c - 1] = "2"  
+        return tablero
