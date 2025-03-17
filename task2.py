@@ -28,7 +28,6 @@ def elegir_alpha_beta(agente_numero):
 if __name__ == "__main__":
 
     modo = elegir_modo()
-    game = Connect4()
 
     if modo == 1:
         # Humano vs Humano
@@ -55,5 +54,6 @@ if __name__ == "__main__":
 
         player1 = Player("Red", agent1)
         player2 = Player("Purple", agent2)
-
+        
+    game = Connect4()
     game.play(player1, player2)
