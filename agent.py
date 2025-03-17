@@ -2,21 +2,19 @@ import math
 import random
 
 class Agent:
-    def __init__(self, player_id, alpha_beta=False, depth=4):
-        self.id = str(player_id)  # Almacenar como string
-        self.opponent_id = '2' if self.id == '1' else '1'  # ID del oponente como string
+    def __init__(self, depth, player_id, alpha_beta=False):
+        self.id = str(player_id)  
+        self.opponent_id = '2' if self.id == '1' else '1'  
         self.alpha_beta = alpha_beta
-        self.depth = depth
+        self.depth = depth if not alpha_beta else depth+1
 
     def evaluar_tablero(self, tablero):
         """Evalúa el tablero considerando agrupaciones y posición."""
         score = 0
-        # Preferencia por la columna central
         center_column = [fila[3] for fila in tablero]
-        score += center_column.count(self.id) * 2
-        score -= center_column.count(self.opponent_id) * 2
+        score += center_column.count(self.id) * 3
+        score -= center_column.count(self.opponent_id) * 3
 
-        # Evaluar líneas horizontales, verticales y diagonales
         for row in range(6):
             for col in range(7):
                 if tablero[row][col] == self.id:
@@ -27,9 +25,9 @@ class Agent:
         return score
 
     def evaluar_posicion(self, tablero, row, col, player):
-        """Evalúa potenciales líneas de 4 desde una posición."""
+        """Evalúa posibles líneas de 4 desde una posición."""
         value = 0
-        direcciones = [(0, 1), (1, 0), (1, 1), (-1, 1)]  # Horizontal, Vertical, Diagonales
+        direcciones = [(0, 1), (1, 0), (1, 1), (-1, 1)]
         for dx, dy in direcciones:
             count = 1
             vacios = 0
@@ -41,7 +39,7 @@ class Agent:
                     if 0 <= x < 7 and 0 <= y < 6:
                         if tablero[y][x] == player:
                             count += 1
-                        elif tablero[y][x] == '0' or tablero[y][x] == 0:
+                        elif tablero[y][x] in ('0', 0):
                             vacios += 1
                             break
                         else:
@@ -50,12 +48,16 @@ class Agent:
                     else:
                         break
             if count >= 4:
-                value += 100
+                value += 1000  # Victoria
             elif count == 3 and vacios >= 1:
-                value += 5
+                value += 10
             elif count == 2 and vacios >= 2:
-                value += 2
+                value += 3
         return value
+
+    def ordenar_movimientos(self, tablero, movimientos):
+        """Ordena movimientos según su evaluación heurística."""
+        return sorted(movimientos, key=lambda col: self.evaluar_tablero(self.simular_movimiento(tablero, col, self.id)), reverse=True)
 
     def minimax(self, tablero, profundidad, alpha, beta, maximizando):
         if profundidad == 0 or self.juego_terminado(tablero):
@@ -66,9 +68,11 @@ class Agent:
         if not movimientos_validos:
             return 0, None
 
+        movimientos_ordenados = self.ordenar_movimientos(tablero, movimientos_validos)
+
         if maximizando:
             max_eval = -math.inf
-            for columna in movimientos_validos:
+            for columna in movimientos_ordenados:
                 nuevo_tablero = self.simular_movimiento(tablero, columna, self.id)
                 evaluacion, _ = self.minimax(nuevo_tablero, profundidad-1, alpha, beta, False)
                 if evaluacion > max_eval:
@@ -81,7 +85,7 @@ class Agent:
             return max_eval, mejor_columna
         else:
             min_eval = math.inf
-            for columna in movimientos_validos:
+            for columna in movimientos_ordenados:
                 nuevo_tablero = self.simular_movimiento(tablero, columna, self.opponent_id)
                 evaluacion, _ = self.minimax(nuevo_tablero, profundidad-1, alpha, beta, True)
                 if evaluacion < min_eval:
@@ -99,10 +103,7 @@ class Agent:
             movimientos_validos = [c for c in range(7) if self.movimiento_valido(tablero, c)]
             return random.choice(movimientos_validos) if movimientos_validos else None
         
-        
-        # Se le suma uno a la columna porque en nuestro connect4.py se manejan por la columna literal
-        movimiento = movimiento + 1
-        return movimiento
+        return movimiento + 1  # Ajustar a la numeración del connect4.py
 
     def movimiento_valido(self, tablero, columna):
         return tablero[0][columna] in (0, '0')
